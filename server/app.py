@@ -16,11 +16,45 @@ db.init_app(app)
 
 @app.route('/messages')
 def messages():
-    return ''
+    if request.method == 'GET':
+        messages = Message.query.order_by(Message.created_at.asc()).all()
+        messages_json = [message.to_dict() for message in messages]
+        return jsonify(messages_json)
+    elif request.method == 'POST':
+        data = request.get_json()
+        new_message = Message(
+            body=data.get('body'),
+            username=data.get('username')
+        )
+        db.session.add(new_message)
+        db.session.commit()
+        return jsonify(new_message.to_dict()), 201
 
 @app.route('/messages/<int:id>')
 def messages_by_id(id):
-    return ''
+    message = Message.query.get_or_404(id)
+    if request.method == 'PATCH':
+        data = request.get_json()
+        if 'body' in data:
+            message.body = data['body']
+        db.session.commit()
+        return jsonify(message.to_dict())
+    elif request.method == 'DELETE':
+        db.session.delete(message)
+        db.session.commit()
+        return '', 204
+
+
+def message_to_dict(message):
+    return {
+        'id': message.id,
+        'body': message.body,
+        'username': message.username,
+        'created_at': message.created_at.strftime('%Y-%m-%d %H:%M:%S')
+    }
+
+
+Message.to_dict = message_to_dict
 
 if __name__ == '__main__':
     app.run(port=5555)
